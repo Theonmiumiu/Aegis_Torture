@@ -13,21 +13,21 @@ Task:
 业务场景要求倾向: {tags_str}
 
 Requirement:
-1. 绝对严禁在题目描述、输入输出说明、甚至是代码注释中直接说出算法名称（如"{core_algo}"）。必须用业务逻辑或数学公式来掩盖算法本质。
-2. 必须包含变量范围限制（Constraints），例如 $n \le 2 \\times 10^5$，确保暴力解法会超时，必须使用该核心算法的最优解。
-3. 提供的 Standard Solution 必须是 Python 3 代码，且必须符合 ACM 模式（通过 sys.stdin 读取标准输入，通过 print 打印标准输出）。
-4. 请以严谨的 JSON 格式输出结果，不要包含任何 Markdown 代码块包裹（不要输出 ```json ），直接输出合法的 JSON 字符串。
+1. 绝对严禁在题目描述中直接说出算法名称（如"{core_algo}"）。必须用业务逻辑或数学公式来掩盖算法本质。
+2. constraints 字段必须包含变量范围限制，例如 $n \\le 2 \\times 10^5$，确保暴力解法超时。
+3. std_solution 必须是可执行的 Python 3 代码，符合 ACM 模式（sys.stdin 读取，print 输出）。
+4. 请以严谨的 JSON 格式输出，不要包含任何 Markdown 代码块包裹，直接输出合法 JSON。
 
 JSON 格式要求如下：
 {{
     "title": "题目名称（冷酷、抽象或带学术感）",
-    "desc": "详细的题目描述，包含背景、数学定义和数据范围约束",
-    "io_spec": {{
-        "input_format": "输入格式说明",
-        "output_format": "输出格式说明",
-        "example": "Sample Input:\\n...\\nSample Output:\\n..."
-    }},
-    "std_solution": "import sys\\n\\ndef solve():\\n..." 
+    "desc": "详细的题目描述，包含背景和数学定义",
+    "constraints": "1 <= n <= 2*10^5，1 <= k <= n",
+    "sample_io": [
+        {{"input": "样例输入（多行用\\n分隔）", "output": "样例输出"}}
+    ],
+    "io_spec_type": "single_test_case",
+    "std_solution": "import sys\\n\\ndef solve():\\n    pass\\n\\nif __name__ == '__main__':\\n    solve()"
 }}
 """
 
