@@ -1,8 +1,14 @@
-from typing import TypedDict, List, Dict
+"""
+Shared TypedDict data contracts for all Aegis Torture modules.
+
+These types define the canonical shape of data passed between:
+  profiler -> problem_synthesizer -> exam_formatter -> grader
+"""
+from typing import Literal, TypedDict, List, Dict
 
 
 class IOSpec(TypedDict):
-    type: str  # "single_test_case" | "multi_test_case"
+    type: Literal["single_test_case", "multi_test_case"]
 
 
 class SampleIO(TypedDict):
@@ -20,7 +26,7 @@ class AlgorithmProblem(TypedDict):
     std_solution: str
     tag: str
     brief_description: str
-    source: str  # "local" | "llm_generated"
+    source: Literal["local", "llm_generated", "fallback"]
 
 
 class MCQProblem(TypedDict):
