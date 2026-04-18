@@ -3,7 +3,7 @@ import uuid
 import random
 from typing import Dict, Any, List
 
-from problem_synthesizer.prompts.templates import MCQ_PROMPT_TEMPLATE
+from problem_synthesizer.prompts.templates import MCQ_PROMPT_TEMPLATE, MCQ_BATCH_PROMPT_TEMPLATE
 
 
 class MCQGenerator:
@@ -111,3 +111,59 @@ class MCQGenerator:
                 continue
 
         return all_mcqs
+
+    def generate_batch(self, tags: List[str], count: int) -> List[Dict[str, Any]]:
+        """
+        单次 LLM 请求生成 count 道题，出题范围覆盖所有 tags。
+        比逐 tag 调用的 generate_mcqs 更高效，适合并发批次调用。
+        """
+        if not tags:
+            tags = random.sample(self.fallback_tags, min(2, len(self.fallback_tags)))
+
+        tags_str = "、".join(tags)
+        prompt = MCQ_BATCH_PROMPT_TEMPLATE.format(tags_str=tags_str, count=count).strip()
+
+        try:
+            response_text = self.llm_client.generate_text(prompt, temperature=0.2)
+            clean_json_str = response_text.replace("```json", "").replace("```", "").strip()
+            parsed_mcqs = json.loads(clean_json_str)
+
+            result = []
+            for i, mcq in enumerate(parsed_mcqs):
+                tag = mcq.get("tag") or tags[i % len(tags)]
+
+                correct_count = len(mcq.get("correct_options", []))
+                if correct_count > 3:
+                    mcq["correct_options"] = mcq["correct_options"][:3]
+                elif correct_count < 2:
+                    existing = mcq.get("correct_options") or []
+                    mcq["correct_options"] = (existing + ["A", "B"])[:2]
+
+                result.append({
+                    "question_id": str(uuid.uuid4()),
+                    "tag": tag,
+                    "text": mcq.get("text", "题目生成失败"),
+                    "options": mcq.get("options", {}),
+                    "correct_options": mcq.get("correct_options"),
+                    "explanation": mcq.get("explanation", "无解析"),
+                })
+            return result
+
+        except json.JSONDecodeError as e:
+            import logging as _log
+            _log.getLogger(__name__).warning(f"MCQ 批次 JSON 解析失败: {e}，触发降级补偿")
+            return [
+                {
+                    "question_id": str(uuid.uuid4()),
+                    "tag": tags[i % len(tags)],
+                    "text": f"（降级补偿题）关于 {tags[i % len(tags)]}，以下说法正确的是？",
+                    "options": {"A": "正确描述A。", "B": "正确描述B。", "C": "错误描述C。", "D": "无关描述D。"},
+                    "correct_options": ["A", "B"],
+                    "explanation": f"LLM 生成失败: {str(e)}",
+                }
+                for i in range(count)
+            ]
+        except Exception as e:
+            import logging as _log
+            _log.getLogger(__name__).warning(f"MCQ 批次生成异常: {e}")
+            return []
