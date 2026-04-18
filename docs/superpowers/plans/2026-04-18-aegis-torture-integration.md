@@ -6,7 +6,7 @@
 
 **Architecture:** 根目录新增 `schema.py`（统一数据契约）、`config.py`（.env 配置加载）、`main.py`（run/grade/report 三命令编排）。各子模块在不重写的前提下做最小改动：修复 Bug、统一键名、补充缺失字段、用 `openai` SDK 替换 Mock。
 
-**Tech Stack:** Python 3.13, `openai >= 1.0`（OpenAI-compatible client），`python-dotenv >= 1.0`，`pytest`（测试）
+**Tech Stack:** Python 3.13, `openai >= 1.0`（OpenAI-compatible client），`python-dotenv >= 1.0`，`pytest`（测试），`uv`（虚拟环境与依赖管理）
 
 ---
 
@@ -83,10 +83,10 @@ dev = [
 - [ ] **Step 2: 安装依赖**
 
 ```bash
-pip install -e ".[dev]"
+uv sync --extra dev
 ```
 
-预期输出：包含 `Successfully installed openai python-dotenv ...`
+预期输出：包含 `Resolved ... packages` 并安装 openai、python-dotenv、pytest
 
 - [ ] **Step 3: 创建 .env.example**
 
@@ -147,7 +147,7 @@ def test_mcq_problem_has_required_fields():
 - [ ] **Step 5: 运行测试，确认失败（schema.py 不存在）**
 
 ```bash
-pytest tests/test_schema.py -v
+uv run pytest tests/test_schema.py -v
 ```
 
 预期：`ModuleNotFoundError: No module named 'schema'`
@@ -200,7 +200,7 @@ class ProblemSet(TypedDict):
 - [ ] **Step 7: 运行测试，确认通过**
 
 ```bash
-pytest tests/test_schema.py -v
+uv run pytest tests/test_schema.py -v
 ```
 
 预期：`3 passed`
@@ -244,7 +244,7 @@ def test_settings_reads_from_env(monkeypatch):
 - [ ] **Step 9: 运行测试，确认失败**
 
 ```bash
-pytest tests/test_config.py -v
+uv run pytest tests/test_config.py -v
 ```
 
 预期：`ModuleNotFoundError: No module named 'config'`
@@ -294,7 +294,7 @@ profiler/tests/__init__.py
 - [ ] **Step 12: 运行所有测试，确认通过**
 
 ```bash
-pytest tests/test_schema.py tests/test_config.py -v
+uv run pytest tests/test_schema.py tests/test_config.py -v
 ```
 
 预期：`5 passed`
@@ -372,7 +372,7 @@ def test_generate_text_raises_after_max_retries():
 - [ ] **Step 2: 运行测试，确认失败**
 
 ```bash
-pytest tests/test_llm_client.py -v
+uv run pytest tests/test_llm_client.py -v
 ```
 
 预期：`ImportError` 或测试失败（因为当前 LLMClient 没有 `openai` 导入）
@@ -433,7 +433,7 @@ class LLMClient:
 - [ ] **Step 4: 运行测试，确认通过**
 
 ```bash
-pytest tests/test_llm_client.py -v
+uv run pytest tests/test_llm_client.py -v
 ```
 
 预期：`3 passed`
@@ -592,7 +592,7 @@ def test_tag_inferred_from_filename_prefix():
 - [ ] **Step 2: 运行测试，确认失败**
 
 ```bash
-pytest tests/test_local_extractor.py -v
+uv run pytest tests/test_local_extractor.py -v
 ```
 
 预期：多项失败（缺少 `id`, `sample_io` 为 dict 而非 list 等）
@@ -734,7 +734,7 @@ class LocalBankExtractor:
 - [ ] **Step 4: 运行测试，确认通过**
 
 ```bash
-pytest tests/test_local_extractor.py -v
+uv run pytest tests/test_local_extractor.py -v
 ```
 
 预期：`6 passed`
@@ -832,7 +832,7 @@ def test_uses_template_for_prompt():
 - [ ] **Step 2: 运行测试，确认失败**
 
 ```bash
-pytest tests/test_mcq_generator.py -v
+uv run pytest tests/test_mcq_generator.py -v
 ```
 
 预期：`test_three_correct_options_not_truncated` 失败（当前代码截断为 2 个）
@@ -877,7 +877,7 @@ elif correct_count < 2:
 - [ ] **Step 5: 运行测试，确认通过**
 
 ```bash
-pytest tests/test_mcq_generator.py -v
+uv run pytest tests/test_mcq_generator.py -v
 ```
 
 预期：`4 passed`
@@ -992,7 +992,7 @@ return {
 - [ ] **Step 3: 运行已有测试，确认无回归**
 
 ```bash
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 预期：所有已通过的测试仍然通过
@@ -1069,7 +1069,7 @@ def test_evaluate_algorithm_calls_generate_text():
 - [ ] **Step 2: 运行测试，确认 test_evaluate_algorithm_calls_generate_text 失败**
 
 ```bash
-pytest tests/test_evaluator.py -v
+uv run pytest tests/test_evaluator.py -v
 ```
 
 预期：`test_evaluate_algorithm_calls_generate_text` 失败（因 `llm_client.ask()` 不存在）
@@ -1087,7 +1087,7 @@ if llm_client:
 - [ ] **Step 4: 运行测试，确认 evaluator 全部通过**
 
 ```bash
-pytest tests/test_evaluator.py -v
+uv run pytest tests/test_evaluator.py -v
 ```
 
 预期：`7 passed`
@@ -1175,7 +1175,7 @@ def test_grade_submission_wrong_answer():
 - [ ] **Step 6: 运行测试，确认失败（grader.py 使用 "mcqs" 键）**
 
 ```bash
-pytest tests/test_grader_integration.py -v
+uv run pytest tests/test_grader_integration.py -v
 ```
 
 预期：测试失败（`mcq_section` 下有数据，但 grader 读 `"mcqs"` 键，返回空列表）
@@ -1218,7 +1218,7 @@ report_data.append({
 - [ ] **Step 8: 运行所有 grader 测试，确认通过**
 
 ```bash
-pytest tests/test_evaluator.py tests/test_grader_integration.py -v
+uv run pytest tests/test_evaluator.py tests/test_grader_integration.py -v
 ```
 
 预期：`9 passed`
@@ -1325,7 +1325,7 @@ def test_build_daily_exam_injects_boilerplate_multi_test_case():
 - [ ] **Step 2: 运行测试**
 
 ```bash
-pytest tests/test_formatter.py -v
+uv run pytest tests/test_formatter.py -v
 ```
 
 预期：`4 passed`（formatter 的 mcq_section 键已经正确）
@@ -1498,7 +1498,7 @@ python -c "import main; print('imports OK')"
 - [ ] **Step 3: 运行完整测试套件确认无回归**
 
 ```bash
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 预期：全部已有测试通过
@@ -1521,7 +1521,7 @@ git commit -m "feat: add root orchestrator main.py with run/grade/report command
 - [ ] **Step 1: 从根目录运行 profiler 原有测试**
 
 ```bash
-pytest profiler/tests/test_profiler.py -v
+uv run pytest profiler/tests/test_profiler.py -v
 ```
 
 预期：`3 passed`
@@ -1529,7 +1529,7 @@ pytest profiler/tests/test_profiler.py -v
 - [ ] **Step 2: 运行全部测试**
 
 ```bash
-pytest tests/ profiler/tests/ -v
+uv run pytest tests/ profiler/tests/ -v
 ```
 
 预期：全部通过，无 ImportError、无 AttributeError
