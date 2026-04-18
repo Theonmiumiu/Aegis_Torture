@@ -21,7 +21,7 @@ def test_generate_text_retries_on_failure():
         create_mock = mock_openai_cls.return_value.chat.completions.create
         create_mock.side_effect = [ConnectionError("network fail"), mock_response]
 
-        with patch("time.sleep"):
+        with patch("problem_synthesizer.utils.llm_client.time.sleep"):
             from problem_synthesizer.utils.llm_client import LLMClient
             client = LLMClient(api_key="t", base_url="http://t", model="m", max_retries=3)
             result = client.generate_text("hello")
@@ -35,7 +35,7 @@ def test_generate_text_raises_after_max_retries():
         create_mock = mock_openai_cls.return_value.chat.completions.create
         create_mock.side_effect = ConnectionError("always fails")
 
-        with patch("time.sleep"):
+        with patch("problem_synthesizer.utils.llm_client.time.sleep"):
             from problem_synthesizer.utils.llm_client import LLMClient
             client = LLMClient(api_key="t", base_url="http://t", model="m", max_retries=2)
             try:
@@ -43,3 +43,5 @@ def test_generate_text_raises_after_max_retries():
                 assert False, "应该抛出 RuntimeError"
             except RuntimeError as e:
                 assert "多次调用失败" in str(e)
+
+        assert create_mock.call_count == 3  # max_retries=2: 1 initial + 2 retries

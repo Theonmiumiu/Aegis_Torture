@@ -3,14 +3,15 @@ import random
 import logging
 from openai import OpenAI
 
-logging.basicConfig(level=logging.INFO, format="[%(asctime)s] %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 
 class LLMClient:
     """
     LLM 客户端封装，支持所有 OpenAI-compatible 接口。
     内置带 Jitter 的指数退避重试机制。
+    max_retries=3 表示初始请求失败后最多重试 3 次，共最多 4 次请求。
     """
 
     def __init__(self, api_key: str, base_url: str, model: str, max_retries: int = 3):
@@ -31,7 +32,10 @@ class LLMClient:
                     temperature=temperature,
                     max_tokens=2048,
                 )
-                return response.choices[0].message.content
+                content = response.choices[0].message.content
+                if content is None:
+                    raise RuntimeError("LLM 返回了空内容（finish_reason 可能表示拒绝）")
+                return content
 
             except Exception as e:
                 retries += 1
