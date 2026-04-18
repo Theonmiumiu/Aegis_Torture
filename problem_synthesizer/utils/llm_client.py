@@ -7,11 +7,18 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 
+def _is_rate_limit_error(e: Exception) -> bool:
+    """判断是否为 Rate Limit 类错误（HTTP 429 / too frequent）。"""
+    msg = str(e).lower()
+    return any(kw in msg for kw in ("429", "too frequent", "rate limit", "rate_limit", "ratelimit"))
+
+
 class LLMClient:
     """
     LLM 客户端封装，支持所有 OpenAI-compatible 接口。
     内置带 Jitter 的指数退避重试机制。
     max_retries=3 表示初始请求失败后最多重试 3 次，共最多 4 次请求。
+    Rate limit 错误单独处理：等待 60s 后重试，不消耗 max_retries 计数。
     """
 
     def __init__(self, api_key: str, base_url: str, model: str, max_retries: int = 3):
@@ -20,11 +27,11 @@ class LLMClient:
         self.max_retries = max_retries
 
     def generate_text(self, prompt: str, temperature: float = 0.5) -> str:
-        """发送 Prompt 并获取文本回复，包含指数退避重试逻辑。"""
+        """发送 Prompt 并获取文本回复。Rate limit 错误等 60s 重试；其他错误最多重试 max_retries 次。"""
         retries = 0
         base_delay = 2.0
 
-        while retries <= self.max_retries:
+        while True:
             try:
                 response = self.client.chat.completions.create(
                     model=self.model,
@@ -38,6 +45,11 @@ class LLMClient:
                 return content
 
             except Exception as e:
+                if _is_rate_limit_error(e):
+                    logger.warning("触发 Rate Limit，等待 60s 后重试（不消耗重试次数）...")
+                    time.sleep(60)
+                    continue
+
                 retries += 1
                 if retries > self.max_retries:
                     logger.error(
