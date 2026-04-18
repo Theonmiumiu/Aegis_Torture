@@ -47,6 +47,10 @@ def _build_temp_md(problem_set: dict, mcq_answers: dict, code_answers: dict) -> 
 def create_app(settings):
     app = Flask(__name__, template_folder="templates")
 
+    @app.route("/favicon.ico")
+    def favicon():
+        return "", 204
+
     @app.route("/")
     def index():
         problem_set, _ = _get_latest_problem_set(settings.data_path)

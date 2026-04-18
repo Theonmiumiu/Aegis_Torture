@@ -32,7 +32,7 @@ def cmd_run():
     os.makedirs(settings.output_path, exist_ok=True)
 
     print("[1/3] 读取学习画像，生成今日考察配置...")
-    mcq_config = get_mcq_config(settings.data_path)
+    mcq_config = get_mcq_config(settings.data_path, num_questions=12)
     tags = mcq_config.get("target_tags", [])
     print(f"      今日目标标签: {tags if tags else '（全领域随机）'}")
 
