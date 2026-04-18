@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html>
+<head><title>Result</title></head>
+<body>
+{% for item in report %}
+<div>{{ item.tag }}: {{ item.score }}</div>
+{% endfor %}
+</body>
+</html>

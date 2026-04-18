@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Exam</title></head>
+<body>
+{% for mcq in problem_set.mcq_section %}
+<div>{{ mcq.tag }}: {{ mcq.text }}</div>
+{% endfor %}
+{% for algo in problem_set.algorithm_section %}
+<div>{{ algo.tag }}: {{ algo.title }}</div>
+{% endfor %}
+</body>
+</html>
