@@ -155,14 +155,35 @@ def cmd_report():
     print(f"✅ 报告已更新: {report_path}")
 
 
+def cmd_serve(port: int = 8080):
+    from server.app import create_app
+    app = create_app(settings)
+    print(f"✅ 试卷服务已启动: http://localhost:{port}")
+    print("   Ctrl+C 退出")
+    app.run(host="127.0.0.1", port=port, debug=False)
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    dispatch = {"run": cmd_run, "grade": cmd_grade, "report": cmd_report}
+    port = 8080
+    for arg in sys.argv[2:]:
+        if arg.startswith("--port="):
+            port = int(arg.split("=")[1])
+        elif arg == "--port" and sys.argv.index(arg) + 1 < len(sys.argv):
+            port = int(sys.argv[sys.argv.index(arg) + 1])
+
+    dispatch = {
+        "run": cmd_run,
+        "grade": cmd_grade,
+        "report": cmd_report,
+        "serve": lambda: cmd_serve(port),
+    }
     if cmd in dispatch:
         dispatch[cmd]()
     else:
-        print("用法: python main.py [run|grade|report]")
-        print("  run     — 生成今日试卷")
-        print("  grade   — 批改并更新学习画像")
-        print("  report  — 单独重新生成进度报告")
+        print("用法: python main.py [run|grade|report|serve]")
+        print("  run          — 生成今日试卷")
+        print("  grade        — 批改并更新学习画像")
+        print("  report       — 单独重新生成进度报告")
+        print("  serve [--port=8080]  — 启动本地 web 服务，浏览器作答")
         sys.exit(1)
