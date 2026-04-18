@@ -1,12 +1,148 @@
 <!DOCTYPE html>
-<html>
-<head><title>Exam</title></head>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日评测 — {{ problem_set.exam_id }}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "PingFang SC", sans-serif; background: #f5f5f5; color: #222; }
+  header { background: #1a1a2e; color: #eee; padding: 20px 40px; }
+  header h1 { font-size: 1.4rem; margin-bottom: 6px; }
+  header p { font-size: 0.85rem; color: #aaa; }
+  .container { max-width: 860px; margin: 30px auto; padding: 0 20px; }
+  .section-title { font-size: 1.2rem; font-weight: bold; border-left: 4px solid #4a90d9;
+                   padding-left: 12px; margin: 30px 0 16px; }
+  .rule-note { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px;
+               padding: 10px 16px; font-size: 0.85rem; margin-bottom: 20px; color: #6d4c00; }
+  fieldset.mcq { background: #fff; border: 1px solid #ddd; border-radius: 8px;
+                 padding: 16px 20px; margin-bottom: 16px; }
+  fieldset.mcq legend { font-weight: 600; font-size: 0.95rem; padding: 0 6px; }
+  .tag-badge { background: #e3f2fd; color: #1565c0; font-size: 0.75rem;
+               padding: 2px 8px; border-radius: 12px; margin-left: 8px; font-weight: normal; }
+  .option-label { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0;
+                  cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: background 0.15s; }
+  .option-label:hover { background: #f0f4ff; }
+  .option-label input { margin-top: 2px; flex-shrink: 0; }
+  .algo-card { background: #fff; border: 1px solid #ddd; border-radius: 8px;
+               padding: 20px; margin-bottom: 20px; }
+  .algo-card h3 { font-size: 1rem; margin-bottom: 12px; color: #1a1a2e; }
+  .algo-desc { font-size: 0.9rem; line-height: 1.7; margin-bottom: 10px; }
+  pre.constraint { background: #f8f8f8; border-left: 3px solid #ccc; padding: 8px 14px;
+                   font-size: 0.85rem; margin: 10px 0; overflow-x: auto; }
+  pre.sample { background: #1e1e2e; color: #cdd6f4; padding: 12px 16px; border-radius: 6px;
+               font-size: 0.82rem; margin: 10px 0; overflow-x: auto; }
+  .code-area { width: 100%; min-height: 260px; padding: 12px; font-family: "Consolas", monospace;
+               font-size: 0.85rem; border: 1px solid #ccc; border-radius: 6px; resize: vertical;
+               background: #1e1e2e; color: #cdd6f4; margin-top: 12px; }
+  .submit-bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid #ddd;
+                padding: 16px 20px; display: flex; align-items: center; gap: 16px;
+                box-shadow: 0 -2px 8px rgba(0,0,0,.08); }
+  #submit-btn { background: #4a90d9; color: #fff; border: none; padding: 12px 36px;
+                border-radius: 8px; font-size: 1rem; cursor: pointer; font-weight: 600; }
+  #submit-btn:hover { background: #357abd; }
+  #submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+  #loading { color: #666; font-size: 0.9rem; display: none; }
+</style>
+</head>
 <body>
-{% for mcq in problem_set.mcq_section %}
-<div>{{ mcq.tag }}: {{ mcq.text }}</div>
-{% endfor %}
-{% for algo in problem_set.algorithm_section %}
-<div>{{ algo.tag }}: {{ algo.title }}</div>
-{% endfor %}
+
+<header>
+  <h1>📋 每日算法与工程评测</h1>
+  <p>试卷 ID: {{ problem_set.exam_id }} &nbsp;|&nbsp; 生成日期: {{ problem_set.exam_date }}
+     &nbsp;|&nbsp; 知识点: {{ problem_set.target_tags | join(', ') }}</p>
+</header>
+
+<div class="container">
+
+  {% if problem_set.mcq_section %}
+  <div class="section-title">第一部分：多项选择题</div>
+  <div class="rule-note">⚠️ 本部分多选题：全对得 1 分，漏选得 1/3 分，错选/多选不得分。</div>
+
+  {% for mcq in problem_set.mcq_section %}
+  <fieldset class="mcq" data-qid="{{ mcq.question_id }}">
+    <legend>{{ loop.index }}. {{ mcq.text }}
+      <span class="tag-badge">{{ mcq.tag }}</span>
+    </legend>
+    {% for key, val in mcq.options.items() %}
+    <label class="option-label">
+      <input type="checkbox" class="mcq-opt" data-qid="{{ mcq.question_id }}" value="{{ key }}">
+      <span><strong>{{ key }}.</strong> {{ val }}</span>
+    </label>
+    {% endfor %}
+  </fieldset>
+  {% endfor %}
+  {% endif %}
+
+  {% if problem_set.algorithm_section %}
+  <div class="section-title">第二部分：算法编程题</div>
+
+  {% for algo in problem_set.algorithm_section %}
+  <div class="algo-card">
+    <h3>题 {{ loop.index }}: {{ algo.title }} &nbsp;<code style="font-size:.8rem;color:#888">ID: {{ algo.id }}</code></h3>
+    <div class="algo-desc">{{ algo.desc }}</div>
+    {% if algo.constraints %}
+    <pre class="constraint">约束条件：{{ algo.constraints }}</pre>
+    {% endif %}
+    {% for io in algo.sample_io %}
+    <pre class="sample">样例输入：
+{{ io.input }}
+
+样例输出：
+{{ io.output }}</pre>
+    {% endfor %}
+    <textarea class="code-area" data-aid="{{ algo.id }}"
+placeholder="import sys
+
+def solve():
+    # 在此粘贴或编写你的 Python 代码
+    pass
+
+if __name__ == '__main__':
+    solve()"></textarea>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+</div>
+
+<div class="submit-bar">
+  <button id="submit-btn" onclick="submitAnswers()">提交批改</button>
+  <span id="loading">⏳ 正在批改中，请稍候（LLM 评测算法题可能需要数秒）...</span>
+</div>
+
+<script>
+function submitAnswers() {
+  const mcq_answers = {};
+  document.querySelectorAll('fieldset[data-qid]').forEach(fs => {
+    const qid = fs.dataset.qid;
+    mcq_answers[qid] = [...fs.querySelectorAll('.mcq-opt:checked')].map(el => el.value);
+  });
+
+  const code_answers = {};
+  document.querySelectorAll('.code-area[data-aid]').forEach(ta => {
+    code_answers[ta.dataset.aid] = ta.value;
+  });
+
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('loading').style.display = 'inline';
+
+  fetch('/grade', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({mcq_answers, code_answers})
+  })
+  .then(r => {
+    if (!r.ok) throw new Error('服务器返回 ' + r.status);
+    return r.text();
+  })
+  .then(html => { document.open(); document.write(html); document.close(); })
+  .catch(err => {
+    alert('提交失败: ' + err);
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('loading').style.display = 'none';
+  });
+}
+</script>
 </body>
 </html>
