@@ -24,10 +24,15 @@ class MCQGenerator:
             "分布式锁与事务 (Distributed Systems)",
             "数据库索引与调优 (Database Tuning)",
             "检索增强生成 (RAG) 与大模型基础",
-            "统计推断与A/B测试 (A/B Testing)",  # 融入统计学背景
-            "高频交易系统架构 (HFT Architecture)",  # 融入金融背景
+            "统计推断与A/B测试 (A/B Testing)",
+            "高频交易系统架构 (HFT Architecture)",
             "缓存一致性协议 (Cache Coherence)",
-            "微服务熔断与限流 (Microservices)"
+            "微服务熔断与限流 (Microservices)",
+            "网络协议与传输层 (HTTP/2, WebSocket, QUIC, gRPC, TLS)",
+            "分布式数据一致性与状态管理 (CAP定理, CRDT, Eventual Consistency, Saga模式)",
+            "强化学习与RLHF (PPO, DPO, GRPO, 奖励建模, 价值对齐)",
+            "大模型架构原理 (Transformer, BERT, LLaMA, Mamba/SSM, MoE, 多头注意力机制)",
+            "大模型微调技术 (LoRA, QLoRA, Prompt Tuning, Full Fine-tuning, PEFT, 灾难性遗忘)",
         ]
 
     def _build_prompt(self, tag: str, count: int) -> str:
@@ -115,13 +120,23 @@ class MCQGenerator:
     def generate_batch(self, tags: List[str], count: int) -> List[Dict[str, Any]]:
         """
         单次 LLM 请求生成 count 道题，出题范围覆盖所有 tags。
-        比逐 tag 调用的 generate_mcqs 更高效，适合并发批次调用。
+        每批按 1:1 比例出题：一半学术知识考察，一半业务情景应用。
         """
         if not tags:
             tags = random.sample(self.fallback_tags, min(2, len(self.fallback_tags)))
 
+        academic_count = count // 2
+        business_count = count - academic_count
+
         tags_str = "、".join(tags)
-        prompt = MCQ_BATCH_PROMPT_TEMPLATE.format(tags_str=tags_str, count=count).strip()
+        prompt = MCQ_BATCH_PROMPT_TEMPLATE.format(
+            tags_str=tags_str,
+            count=count,
+            academic_count=academic_count,
+            business_count=business_count,
+        ).strip()
+
+        valid_types = {"academic", "business_scenario"}
 
         try:
             response_text = self.llm_client.generate_text(prompt, temperature=0.2)
@@ -139,9 +154,14 @@ class MCQGenerator:
                     existing = mcq.get("correct_options") or []
                     mcq["correct_options"] = (existing + ["A", "B"])[:2]
 
+                q_type = mcq.get("question_type", "")
+                if q_type not in valid_types:
+                    q_type = "academic" if i < academic_count else "business_scenario"
+
                 result.append({
                     "question_id": str(uuid.uuid4()),
                     "tag": tag,
+                    "question_type": q_type,
                     "text": mcq.get("text", "题目生成失败"),
                     "options": mcq.get("options", {}),
                     "correct_options": mcq.get("correct_options"),
@@ -156,6 +176,7 @@ class MCQGenerator:
                 {
                     "question_id": str(uuid.uuid4()),
                     "tag": tags[i % len(tags)],
+                    "question_type": "academic" if i < academic_count else "business_scenario",
                     "text": f"（降级补偿题）关于 {tags[i % len(tags)]}，以下说法正确的是？",
                     "options": {"A": "正确描述A。", "B": "正确描述B。", "C": "错误描述C。", "D": "无关描述D。"},
                     "correct_options": ["A", "B"],

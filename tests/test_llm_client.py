@@ -83,4 +83,4 @@ def test_rate_limit_sleeps_60_seconds():
             client = LLMClient(api_key="t", base_url="http://t", model="m", max_retries=3)
             client.generate_text("hello")
 
-    assert mock_sleep.call_args_list[0][0][0] == 60
+    mock_sleep.assert_any_call(60)

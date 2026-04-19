@@ -100,12 +100,14 @@ def cmd_run():
         "mcq_section": mcqs,
     }
 
-    ps_path = os.path.join(settings.data_path, f"problem_set_{date_compact}.json")
-    with open(ps_path, "w", encoding="utf-8") as f:
-        json.dump(problem_set, f, indent=2, ensure_ascii=False)
-
     print("[3/3] 排版试卷...")
     exam_path = build_daily_exam(problem_set, settings.output_path)
+
+    # 从生成的试卷文件名中提取 key，确保 JSON 与 md 永远一一对应
+    exam_key = os.path.basename(exam_path).replace("Exam_", "").replace(".md", "")
+    ps_path = os.path.join(settings.data_path, f"problem_set_{exam_key}.json")
+    with open(ps_path, "w", encoding="utf-8") as f:
+        json.dump(problem_set, f, indent=2, ensure_ascii=False)
 
     print(f"\n✅ 试卷已生成: {os.path.abspath(exam_path)}")
     print(f"   题目包存档: {os.path.abspath(ps_path)}")
