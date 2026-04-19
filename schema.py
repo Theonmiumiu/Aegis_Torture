@@ -38,9 +38,20 @@ class MCQProblem(TypedDict):
     explanation: str
 
 
+class CodeSnippetProblem(TypedDict):
+    id: str
+    title: str
+    desc: str
+    hint: str
+    reference_impl: str
+    tag: str
+    difficulty: str
+
+
 class ProblemSet(TypedDict):
     exam_id: str
     exam_date: str
     target_tags: List[str]
     algorithm_section: List[AlgorithmProblem]
     mcq_section: List[MCQProblem]
+    code_snippet_section: List[CodeSnippetProblem]

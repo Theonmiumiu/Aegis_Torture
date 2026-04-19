@@ -2,7 +2,7 @@
 import json
 from typing import List, Dict, Any
 from .parser import parse_markdown_submission
-from .evaluator import score_mcq, evaluate_algorithm_with_llm
+from .evaluator import score_mcq, evaluate_algorithm_with_llm, evaluate_code_snippet_with_llm
 
 
 def grade_submission(md_file_path: str, problem_set_json_path: str, llm_client=None) -> List[Dict[str, Any]]:
@@ -35,7 +35,9 @@ def grade_submission(md_file_path: str, problem_set_json_path: str, llm_client=N
         report_data.append({
             "tag": mcq_meta["tag"],
             "score": score,
-            "brief_description": mcq_meta.get("brief_description", f"MCQ-{idx + 1}")
+            "question_text": mcq_meta.get("text", f"MCQ-{idx + 1}")[:120],
+            "brief_description": mcq_meta.get("brief_description", f"MCQ-{idx + 1}"),
+            "section": "mcq",
         })
 
     # 4. 评定算法题
@@ -53,10 +55,33 @@ def grade_submission(md_file_path: str, problem_set_json_path: str, llm_client=N
         report_data.append({
             "tag": algo_meta.get("tag", "Algorithm"),
             "score": score,
+            "question_text": algo_meta.get("title", f"Algo-{algo_id}"),
             "brief_description": algo_meta.get(
                 "brief_description",
                 algo_meta.get("desc", f"Algo-{algo_id}")[:50]
             ),
+            "section": "algorithm",
+        })
+
+    # 5. 评定手撕题
+    for snip_meta in problem_set.get("code_snippet_section", []):
+        snip_id = snip_meta["id"]
+        user_code = code_blocks.get(snip_id, "")
+
+        score = evaluate_code_snippet_with_llm(
+            title=snip_meta.get("title", ""),
+            desc=snip_meta.get("desc", ""),
+            reference_impl=snip_meta.get("reference_impl", ""),
+            user_code=user_code,
+            llm_client=llm_client,
+        )
+
+        report_data.append({
+            "tag": snip_meta.get("tag", "算法手撕"),
+            "score": score,
+            "question_text": snip_meta.get("title", f"Snippet-{snip_id}"),
+            "brief_description": snip_meta.get("title", f"Snippet-{snip_id}"),
+            "section": "code_snippet",
         })
 
     return report_data

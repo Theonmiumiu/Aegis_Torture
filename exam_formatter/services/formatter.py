@@ -116,16 +116,72 @@ def build_daily_exam(problem_set: dict, output_dir: str) -> str:
             if sample_io:
                 md_lines.append("**样例输入/输出**:")
                 for io_idx, io in enumerate(sample_io, start=1):
-                    # 使用动态 fence 渲染输入输出
                     md_lines.append(
                         f"样例 {io_idx}:\n{fence}text\n输入:\n{io.get('input')}\n\n输出:\n{io.get('output')}\n{fence}\n")
 
-            # 注入代码支架
             code_boilerplate = _inject_boilerplate(algo)
             md_lines.append("**代码实现区**:")
             md_lines.append(f"{fence}python")
             md_lines.append(code_boilerplate)
             md_lines.append(f"{fence}\n")
+
+        md_lines.append("---\n")
+
+    # --- 渲染算法模块手撕部分 ---
+    snippet_section = problem_set.get("code_snippet_section", [])
+    if snippet_section:
+        md_lines.append("## 第三部分：算法模块手撕")
+        md_lines.append("> **考察目标：不借助任何框架 API，从零手写核心算法模块代码。评分关注正确性与实现思路。**\n")
+
+        # 预制常用数据结构类定义，免去 ACM 模式下需自行声明的麻烦
+        md_lines.append("### 预制类定义（可直接使用，无需重写）\n")
+        md_lines.append(f"{fence}python")
+        md_lines.append(
+            "# 链表节点\n"
+            "class ListNode:\n"
+            "    def __init__(self, val=0, next=None):\n"
+            "        self.val = val\n"
+            "        self.next = next\n"
+            "\n"
+            "# 双向链表节点\n"
+            "class DListNode:\n"
+            "    def __init__(self, val=0, prev=None, next=None):\n"
+            "        self.val = val\n"
+            "        self.prev = prev\n"
+            "        self.next = next\n"
+            "\n"
+            "# 二叉树节点\n"
+            "class TreeNode:\n"
+            "    def __init__(self, val=0, left=None, right=None):\n"
+            "        self.val = val\n"
+            "        self.left = left\n"
+            "        self.right = right\n"
+            "\n"
+            "# N 叉树节点\n"
+            "class NTreeNode:\n"
+            "    def __init__(self, val=0, children=None):\n"
+            "        self.val = val\n"
+            "        self.children = children or []\n"
+            "\n"
+            "# 图（邻接表）\n"
+            "from collections import defaultdict, deque\n"
+            "# graph = defaultdict(list)  # graph[u].append(v)"
+        )
+        md_lines.append(f"{fence}\n")
+
+        for idx, snip in enumerate(snippet_section, start=1):
+            sid = snip.get("id", f"snippet-{idx:02d}")
+            difficulty_label = "🔴 Hard" if snip.get("difficulty") == "hard" else "🟡 Medium"
+            md_lines.append(f"### 手撕 {idx}: {snip.get('title')} [标签: {snip.get('tag')}] [{difficulty_label}]")
+            md_lines.append(f"\n**题目要求**:\n{snip.get('desc')}\n")
+            md_lines.append(f"**思路提示**:\n> {snip.get('hint')}\n")
+            md_lines.append("**你的实现**:")
+            md_lines.append(f"{fence}python")
+            md_lines.append(f"# --- 题目 ID: {sid} ---")
+            md_lines.append("# 在此处手写你的实现代码")
+            md_lines.append(f"{fence}\n")
+
+        md_lines.append("---\n")
 
     # 4. 强制使用 UTF-8 写入本地文件
     with open(file_path, "w", encoding="utf-8") as f:

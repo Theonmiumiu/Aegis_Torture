@@ -43,6 +43,7 @@ def generate_report(storage_path: str) -> bool:
     stats = _load_stats(storage_path)
     tags_data = stats.get("tags", {})
     total_exams = stats.get("global_config", {}).get("total_exams_taken", 0)
+    wrong_history = stats.get("wrong_history", [])
 
     # 获取北京时间
     bj_time = _get_beijing_time()
@@ -124,7 +125,84 @@ def generate_report(storage_path: str) -> bool:
         for tag, data in mastered:
             md_lines.append(_format_table_row(tag, data))
 
-    md_lines.append("\n---\n*本报告由 Sub-project A: Profiler 自动生成。*")
+    # --- 综合掌握情况评估 ---
+    md_lines.extend([
+        "\n---",
+        "## 📋 综合掌握情况评估",
+    ])
+    if not tags_data:
+        md_lines.append("\n> 暂无考试记录，请先完成至少一次考试并批改。")
+    else:
+        weakness_count = len(weaknesses)
+        developing_count = len(developing)
+        mastered_count = len(mastered)
+        total_tags = len(tags_data)
+
+        if avg_level >= 75:
+            overall = "整体掌握情况**优秀**，大部分领域已达到熟练水平。建议继续保持，重点攻克剩余弱项。"
+        elif avg_level >= 55:
+            overall = "整体掌握情况**良好**，核心知识点有一定基础，仍有提升空间，需针对弱项强化训练。"
+        elif avg_level >= 35:
+            overall = "整体掌握情况**中等**，多个知识点尚未稳固，建议系统性复习薄弱领域。"
+        else:
+            overall = "整体掌握情况**需要加强**，大量知识点掌握度不足，建议从基础开始系统性学习。"
+
+        md_lines.extend([
+            f"\n{overall}",
+            f"\n**知识点分布**: 已掌握 {mastered_count} 个 | 巩固中 {developing_count} 个 | 核心弱项 {weakness_count} 个 | 合计 {total_tags} 个",
+            f"**全局平均掌握度**: {avg_level:.1f} / 100\n",
+        ])
+
+        if weaknesses:
+            top_weak = weaknesses[:3]
+            weak_names = "、".join(f"`{t}`" for t, _ in top_weak)
+            md_lines.append(f"**最需优先复习**: {weak_names}\n")
+
+    # --- 错题复习日历（按日期分组） ---
+    md_lines.extend([
+        "---",
+        "## 📅 错题复习日历",
+        "> *记录近 30 天内所有未全对的题目，帮助你有针对性地复习。*\n",
+    ])
+
+    if not wrong_history:
+        md_lines.append("> 暂无错题记录。继续加油！\n")
+    else:
+        # 按日期分组，日期降序（最新的在前）
+        from collections import defaultdict
+        by_date: dict = defaultdict(list)
+        for record in wrong_history:
+            by_date[record.get("date", "未知日期")].append(record)
+
+        section_labels = {
+            "mcq": "多选题",
+            "algorithm": "算法编程题",
+            "code_snippet": "算法模块手撕",
+        }
+
+        for date_str in sorted(by_date.keys(), reverse=True):
+            records = by_date[date_str]
+            md_lines.append(f"### {date_str}（共 {len(records)} 道未全对）\n")
+            md_lines.append("| 题型 | 知识点标签 | 题目 | 得分 |")
+            md_lines.append("| :---: | :--- | :--- | :---: |")
+            for r in records:
+                sec = section_labels.get(r.get("section", "mcq"), "多选题")
+                tag = r.get("tag", "-")
+                qtext = r.get("question_text", "-")
+                # 截断长题目文本
+                if len(qtext) > 60:
+                    qtext = qtext[:57] + "..."
+                score_val = r.get("score", 0.0)
+                if score_val < 0.05:
+                    score_disp = "❌ 0分"
+                elif score_val < 0.5:
+                    score_disp = f"⚠️ {score_val:.0%}"
+                else:
+                    score_disp = f"🔶 {score_val:.0%}"
+                md_lines.append(f"| {sec} | {tag} | {qtext} | {score_disp} |")
+            md_lines.append("")
+
+    md_lines.append("\n---\n*本报告由 Aegis Torture Profiler 自动生成。*")
 
     # 写入文件
     md_content = "\n".join(md_lines)

@@ -160,6 +160,8 @@ def update_mcq_stats(report_data: List[Dict[str, Any]], storage_path: str) -> bo
     current_date_str = _get_current_date_str()
     current_date = datetime.strptime(current_date_str, "%Y-%m-%d")
 
+    wrong_history = stats.get("wrong_history", [])
+
     for item in report_data:
         tag = item.get("tag")
         score = float(item.get("score", 0.0))
@@ -170,6 +172,16 @@ def update_mcq_stats(report_data: List[Dict[str, Any]], storage_path: str) -> bo
             history_buffer.append({
                 "date": current_date_str,
                 "description": description
+            })
+
+        # 记录错题详情（score < 1.0 即有问题，score < 0.3 为严重错误）
+        if score < 0.99:
+            wrong_history.append({
+                "date": current_date_str,
+                "tag": tag,
+                "section": item.get("section", "mcq"),
+                "question_text": item.get("question_text", description)[:150],
+                "score": round(score, 2),
             })
 
         if tag not in tags_data:
@@ -201,8 +213,23 @@ def update_mcq_stats(report_data: List[Dict[str, Any]], storage_path: str) -> bo
         except ValueError:
             continue  # 忽略日期解析错误的非法记录
 
+    # 保留最近 30 天的错题记录
+    cutoff_wrong = current_date - timedelta(days=30)
+    wrong_history = [
+        r for r in wrong_history
+        if _safe_parse_date(r.get("date", "")) >= cutoff_wrong
+    ]
+
     stats["history_buffer"] = filtered_buffer
+    stats["wrong_history"] = wrong_history
     stats["tags"] = tags_data
     stats["global_config"]["total_exams_taken"] = stats["global_config"].get("total_exams_taken", 0) + 1
 
     return _save_stats(storage_path, stats)
+
+
+def _safe_parse_date(date_str: str) -> datetime:
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return datetime(2000, 1, 1)

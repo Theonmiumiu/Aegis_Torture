@@ -77,3 +77,44 @@ def evaluate_algorithm_with_llm(
     except Exception as e:
         logger.error(f"LLM 评测异常: {e}")
         raise LLMUnavailableError("LLM 评测服务响应超时，请保留现场并重试。")
+
+
+def evaluate_code_snippet_with_llm(
+        title: str,
+        desc: str,
+        reference_impl: str,
+        user_code: str,
+        llm_client: Optional[any] = None
+) -> float:
+    """
+    使用 LLM 对手撕代码题进行评判，关注正确性与实现思路。
+    """
+    if not user_code.strip() or user_code.strip() == "# 在此处手写你的实现代码":
+        return 0.0
+
+    prompt = f"""
+    你是一位资深 AI/算法工程师，正在面试评审候选人的手写代码。
+
+    【题目】: {title}
+    【要求】: {desc}
+    【参考实现】: {reference_impl}
+    【候选人提交】: {user_code}
+
+    【评分维度】:
+    1. 算法逻辑正确性：实现是否能正确完成题目要求 (0-50分)
+    2. 关键步骤完整性：关键计算步骤是否都有体现，无明显遗漏 (0-30分)
+    3. 代码质量：可读性、变量命名、无冗余错误代码 (0-20分)
+
+    请直接输出一个 0-100 的整数分值，不要包含任何解释。
+    """
+
+    try:
+        if llm_client:
+            response = llm_client.generate_text(prompt)
+            score = float(response.strip())
+        else:
+            score = 70.0
+        return round(score / 100.0, 2)
+    except Exception as e:
+        logger.error(f"手撕题 LLM 评测异常: {e}")
+        return 0.0

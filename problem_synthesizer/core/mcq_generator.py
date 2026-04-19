@@ -33,6 +33,9 @@ class MCQGenerator:
             "强化学习与RLHF (PPO, DPO, GRPO, 奖励建模, 价值对齐)",
             "大模型架构原理 (Transformer, BERT, LLaMA, Mamba/SSM, MoE, 多头注意力机制)",
             "大模型微调技术 (LoRA, QLoRA, Prompt Tuning, Full Fine-tuning, PEFT, 灾难性遗忘)",
+            "深度学习经典模型与算法 (CNN, RNN, LSTM, ResNet, BatchNorm, Dropout, 优化器)",
+            "经典自然语言处理应用、对比等 (N-gram, HMM, CRF, TF-IDF, LDA, LSA, 词向量, BERT vs GPT, 命名实体识别, 文本分类, 机器翻译, 情感分析, 交叉熵, BPC, BPW, 困惑度/Perplexity)",
+            "经典机器学习算法 (决策树, 随机森林, SVM, 梯度提升, XGBoost, K-means, PCA, 正则化)",
         ]
 
     def _build_prompt(self, tag: str, count: int) -> str:

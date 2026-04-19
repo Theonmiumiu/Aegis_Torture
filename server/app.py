@@ -41,6 +41,14 @@ def _build_temp_md(problem_set: dict, mcq_answers: dict, code_answers: dict) -> 
         lines.append(code if code else "# 未提交代码")
         lines.append("```")
 
+    for snip in problem_set.get("code_snippet_section", []):
+        sid = snip["id"]
+        code = code_answers.get(sid, "")
+        lines.append(f"# --- 题目 ID: {sid} ---")
+        lines.append("```python")
+        lines.append(code if code else "# 未提交代码")
+        lines.append("```")
+
     return "\n".join(lines)
 
 

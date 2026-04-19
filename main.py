@@ -12,6 +12,7 @@ from profiler.core.report_gen import generate_report
 from problem_synthesizer.core.local_extractor import LocalBankExtractor
 from problem_synthesizer.core.llm_coder import MathShellCoder
 from problem_synthesizer.core.mcq_generator import MCQGenerator
+from problem_synthesizer.core.code_snippet_generator import CodeSnippetGenerator
 from problem_synthesizer.utils.llm_client import LLMClient
 from exam_formatter.services.formatter import build_daily_exam
 from grader.grader import grade_submission
@@ -32,7 +33,7 @@ def cmd_run():
     os.makedirs(settings.output_path, exist_ok=True)
 
     print("[1/3] 读取学习画像，生成今日考察配置...")
-    mcq_config = get_mcq_config(settings.data_path, num_questions=12)
+    mcq_config = get_mcq_config(settings.data_path, num_questions=20)
     tags = mcq_config.get("target_tags", [])
     print(f"      今日目标标签: {tags if tags else '（全领域随机）'}")
 
@@ -41,6 +42,7 @@ def cmd_run():
     extractor = LocalBankExtractor(settings.local_bank_path)
     coder = MathShellCoder(llm_client)
     mcq_gen = MCQGenerator(llm_client)
+    snippet_gen = CodeSnippetGenerator(llm_client)
 
     # 本地题库：同步执行（无 LLM 调用）
     coding_problems = []
@@ -57,19 +59,20 @@ def cmd_run():
     num_batches = math.ceil(total_mcqs / batch_size)
     all_tags = mcq_config.get("target_tags", []) or mcq_gen.fallback_tags[:2]
 
-    print(f"      并发提交: 1 道 LLM 算法题 + {num_batches} 批 MCQ（每批最多 {batch_size} 道）...")
+    print(f"      并发提交: 1 道 LLM 算法题 + {num_batches} 批 MCQ（每批最多 {batch_size} 道）+ 手撕题...")
 
-    # 并发：LLM 算法题 + 所有 MCQ 批次同时跑
+    # 并发：LLM 算法题 + 所有 MCQ 批次 + 手撕题同时跑
     futures_map = {}
-    with ThreadPoolExecutor(max_workers=num_batches + 1) as executor:
+    with ThreadPoolExecutor(max_workers=num_batches + 2) as executor:
         futures_map[executor.submit(coder.generate_problem, mcq_config)] = "algo"
+        futures_map[executor.submit(snippet_gen.generate, 3)] = "snippets"
         for i in range(num_batches):
             batch_count = min(batch_size, total_mcqs - i * batch_size)
             futures_map[executor.submit(mcq_gen.generate_batch, all_tags, batch_count)] = f"mcq_{i}"
-    # ThreadPoolExecutor.__exit__ waits for all futures before continuing
 
     mcqs = []
     algo_problem = None
+    snippets = []
     for future, key in futures_map.items():
         try:
             result = future.result()
@@ -78,6 +81,8 @@ def cmd_run():
             continue
         if key == "algo":
             algo_problem = result
+        elif key == "snippets":
+            snippets = result
         else:
             mcqs.extend(result)
 
@@ -85,7 +90,7 @@ def cmd_run():
         algo_problem["id"] = f"algo-{len(coding_problems)+1:02d}"
         coding_problems.append(algo_problem)
 
-    print(f"      生成完毕：{len(coding_problems)} 道算法题，{len(mcqs)} 道多选题")
+    print(f"      生成完毕：{len(coding_problems)} 道算法题，{len(mcqs)} 道多选题，{len(snippets)} 道手撕题")
 
     bj_tz = timezone(timedelta(hours=8))
     now = datetime.now(bj_tz)
@@ -98,6 +103,7 @@ def cmd_run():
         "target_tags": mcq_config.get("target_tags", []),
         "algorithm_section": coding_problems,
         "mcq_section": mcqs,
+        "code_snippet_section": snippets,
     }
 
     print("[3/3] 排版试卷...")
